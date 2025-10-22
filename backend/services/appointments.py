@@ -85,20 +85,11 @@ def schedule_appointment(params: dict, session_id: Optional[str] = None) -> dict
 
 def reschedule_appointment(session_id: str, new_slot: str) -> dict:
     """
-    Reschedule the last appointment in the session
-
-    Args:
-        session_id: Session ID
-        new_slot: New ISO timestamp
-
-    Returns:
-        {
-            "ok": bool,
-            "appt_id": str,
-            "normalized_slot_iso": str,
-            "status": "rescheduled" | "error"
-        }
+    Reschedule the last appointment in the session by creating a new appointment ID
     """
+
+    global appt_counter
+
     # Get last appointment from session
     appt_id = session_context.get(session_id)
 
@@ -119,9 +110,19 @@ def reschedule_appointment(session_id: str, new_slot: str) -> dict:
     )
     booked_slots.discard(old_key)
 
-    # Update appointment
-    old_appt["slot"] = new_slot
-    old_appt["updated_at"] = datetime.now().isoformat()
+    # Create new appointment (with new ID)
+    new_appt_id = f"A-{appt_counter}"
+    appt_counter += 1
+
+    new_appt = {
+        "patient": old_appt["patient"],
+        "slot": new_slot,
+        "location": old_appt["location"],
+        "created_at": datetime.now().isoformat(),
+        "previous_appt_id": appt_id
+    }
+
+    appointments[new_appt_id] = new_appt
 
     # Add new slot to booked set
     new_key = (
@@ -131,12 +132,16 @@ def reschedule_appointment(session_id: str, new_slot: str) -> dict:
     )
     booked_slots.add(new_key)
 
+    # Update session to track the latest appointment
+    session_context[session_id] = new_appt_id
+
     return {
         "ok": True,
-        "appt_id": appt_id,
+        "appt_id": new_appt_id,
         "normalized_slot_iso": new_slot,
         "status": "rescheduled"
     }
+
 
 
 def get_appointments() -> dict:

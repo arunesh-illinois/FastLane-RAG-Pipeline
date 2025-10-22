@@ -145,6 +145,88 @@ python backend/testing/bench_latency.py
 - **Vector Search**: FAISS
 - **Frontend**: Vanilla JS + CSS3
 
+## Workflow
+````
+User Query
+    ↓
+┌─────────────────────┐
+│ Intent Detection    │  8ms (regex patterns)
+│ • Scheduling?       │
+│ • Rescheduling?     │
+│ • Pure RAG?         │
+└─────────────────────┘
+    ↓
+┌─────────────────────────────────┐
+│ Hybrid Retrieval (if needed)    │  18ms
+│ ┌───────────┐  ┌──────────────┐│
+│ │ BM25      │  │ FAISS        ││
+│ │ (lexical) │  │ (semantic)   ││
+│ └───────────┘  └──────────────┘│
+│        ↓              ↓         │
+│   Reciprocal Rank Fusion        │
+│            ↓                    │
+│       Top-3 Documents           │
+└─────────────────────────────────┘
+    ↓
+┌─────────────────────┐
+│ Tool Execution      │  12ms
+│ (if scheduling)     │
+│ • Idempotent        │
+│ • No double-booking │
+└─────────────────────┘
+    ↓
+Response (<500ms)
+````
+
+---
+
+## Test Scenarios
+
+### ✅ Use Case 1: Multi-turn (RAG + Tool + Reschedule)
+
+**Turn 1:**
+````
+User: "What's our late policy and can you book Chen tomorrow at 10:30 in Midtown?"
+
+Response:
+- "We have a 10-minute grace period [k2]. Booked Chen at Midtown (A-1000)."
+- Citations: [k2]
+- Tool: schedule_appointment
+- Latency: 370ms ✅
+````
+
+**Turn 2:**
+````
+User: "Make it 11:00 instead"
+
+Response:
+- "Updated appointment to 11:00 (A-1000)."
+- Tool: reschedule_appointment
+- Latency: 21ms ✅
+````
+
+### ✅ Use Case 2: Pure RAG
+````
+User: "Where do patients park?"
+
+Response:
+- "Patient parking is available in Lot B located behind the main building. [k4]"
+- Citations: [k4]
+- No tool calls
+- Latency: 300ms ✅
+````
+
+### ✅ Use Case 3: Direct Tool Call
+````
+User: "Schedule Rivera Monday 9am at Midtown"
+
+Response:
+- "Booked Rivera Monday at Midtown (A-1001)."
+- Tool: schedule_appointment
+- Minimal retrieval (intent-only)
+- Latency: 1ms ✅
+````
+
 ## Current Status 📈
 
 ✅ Core Features
