@@ -115,6 +115,7 @@ pip install -r backend/requirements.txt
 
 ```bash
 uvicorn backend.main:app --reload
+# Wait for the "Application Started" log as the warm boot occurs first
 ```
 
 3. Load sample knowledge:
@@ -122,6 +123,8 @@ uvicorn backend.main:app --reload
 ```bash
 # Knowledge is auto-loaded from backend/knowledgeBase.json
 ```
+
+4. Open the index.html and run the test cases and any custom queries!
 
 ## Testing & Benchmarks 📊
 
