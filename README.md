@@ -103,7 +103,7 @@ POST /tools/schedule_appointment
 
 ## Getting Started 🚀
 
-1. Set up Python environment (3.10+):
+1. Set up Python environment (3.10+): (might take around 2-3 minutes to download and install packages)
 
 ```bash
 python -m venv .venv
@@ -111,7 +111,7 @@ source .venv/bin/activate
 pip install -r backend/requirements.txt
 ```
 
-2. Start the server:
+2. Start the server: (initial startup would take maximum 2 minutes to detect the startup logic (this takes less than 4 seconds), and run the same)
 
 ```bash
 uvicorn backend.main:app --reload
