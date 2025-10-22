@@ -1,7 +1,7 @@
 import time
 from fastapi import APIRouter
 from backend.services.appointments import schedule_appointment, get_appointments, appointments, booked_slots
-from backend.global_states import session_context
+from backend.variables.global_states import session_context
 from backend.models.schedule_input import ScheduleInput
 
 router = APIRouter()

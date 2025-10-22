@@ -1,5 +1,5 @@
 import json, os, time
-import backend.global_states as global_state
+import backend.variables.global_states as global_state
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
     print(f"✅ Model loaded in {time.time() - start:.2f}s")
 
     # Load sample knowledge
-    knowledge_path = "backend/knowledgeBase.json"
+    knowledge_path = "backend/variables/knowledgeBase.json"
     if os.path.exists(knowledge_path):
         with open(knowledge_path, 'r') as f:
             docs = json.load(f)

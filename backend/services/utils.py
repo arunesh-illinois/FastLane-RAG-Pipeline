@@ -4,7 +4,7 @@ import time
 import faiss
 import numpy as np
 import requests
-import backend.global_states as global_state
+import backend.variables.global_states as global_state
 
 OLLAMA_BASE_URL = "http://localhost:11434/api/generate"  # LLM endpoint (commented out)
 OLLAMA_MODEL = "llama3.2:latest"  # LLM model (commented out)

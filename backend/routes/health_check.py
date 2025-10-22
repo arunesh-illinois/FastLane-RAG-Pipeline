@@ -1,6 +1,6 @@
 import time
 from fastapi import APIRouter
-import backend.global_states as global_state
+import backend.variables.global_states as global_state
 import backend.main as main
 from backend.services.utils import compose_answer
 

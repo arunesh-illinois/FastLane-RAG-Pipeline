@@ -1,6 +1,6 @@
 import time
 from fastapi import APIRouter
-import backend.global_states as global_state
+import backend.variables.global_states as global_state
 from backend.models.knowledge_input import KnowledgeInput
 from backend.services.utils import rebuild_index
 
