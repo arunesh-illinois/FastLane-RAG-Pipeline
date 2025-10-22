@@ -51,6 +51,23 @@ def detect_intent_regex(message: str, session_id: Optional[str] = None) -> dict:
     message_lower = message.lower()
     entities = {}
 
+    # --- 0. Detect cancellation ---
+    cancel_patterns = [
+        r'\b(cancel|delete|remove|drop)\s+(?:appointment\s*)?(A-\d+)\b',  # cancel A-102
+        r'\b(cancel|delete|remove|drop)\s+(?:my\s+)?appointment\b',
+        r'\b(cancel|delete|remove|drop)\b'
+    ]
+    for pattern in cancel_patterns:
+        match = re.search(pattern, message, re.IGNORECASE)
+        if match:
+            if len(match.groups()) >= 2 and match.group(2):
+                entities["appt_id"] = match.group(2).upper()
+            return {
+                "is_scheduling": False,
+                "is_rescheduling": False,
+                "is_cancelling": True,
+                "entities": entities
+            }
     # --- 1. Detect rescheduling ---
     reschedule_patterns = [
         r'\b(?:reschedule|change|update|move|make it)\s+(?:to|for)?\s*(\d{1,2}:?\d{0,2}\s*(?:am|pm)?)'
@@ -62,6 +79,7 @@ def detect_intent_regex(message: str, session_id: Optional[str] = None) -> dict:
             return {
                 "is_scheduling": False,
                 "is_rescheduling": True,
+                "is_cancelling": False,
                 "entities": {
                     "preferred_slot_iso": f"2025-10-21T{hour:02d}:{minute:02d}:00-04:00"
                 }
@@ -97,6 +115,7 @@ def detect_intent_regex(message: str, session_id: Optional[str] = None) -> dict:
     return {
         "is_scheduling": is_scheduling,
         "is_rescheduling": False,
+        "is_cancelling": False,
         "entities": entities
     }
 

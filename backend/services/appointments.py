@@ -150,3 +150,52 @@ def get_appointments() -> dict:
         "appointments": list(appointments.values()),
         "total": len(appointments)
     }
+
+def cancel_appointment(session_id: Optional[str] = None, appt_id: Optional[str] = None) -> dict:
+    """
+    Cancel an appointment by session_id or appt_id.
+
+    Priority:
+    - If appt_id is provided, cancel that one directly.
+    - Otherwise, use the last appointment in the session.
+
+    Returns:
+        {
+            "ok": bool,
+            "appt_id": str (if found),
+            "status": "cancelled" | "not_found"
+        }
+    """
+    # Determine appointment ID
+    target_appt_id = appt_id or session_context.get(session_id)
+
+    if not target_appt_id or target_appt_id not in appointments:
+        return {
+            "ok": False,
+            "error": "No matching appointment found to cancel",
+            "status": "not_found"
+        }
+
+    appt = appointments[target_appt_id]
+
+    # Remove from booked slots
+    slot_key = (
+        appt["patient"].lower(),
+        appt["slot"],
+        appt["location"].lower()
+    )
+    booked_slots.discard(slot_key)
+
+    # Mark appointment as cancelled
+    appt["cancelled_at"] = datetime.now().isoformat()
+    appt["status"] = "cancelled"
+
+    # Remove from session context if it matches
+    if session_id and session_context.get(session_id) == target_appt_id:
+        session_context.pop(session_id, None)
+
+    return {
+        "ok": True,
+        "appt_id": target_appt_id,
+        "status": "cancelled"
+    }

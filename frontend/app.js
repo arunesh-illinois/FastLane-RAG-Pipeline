@@ -109,6 +109,7 @@ async function runTest1() {
   document.getElementById("user-input").value = "What's our late policy and can you book Chen tomorrow at 10:30 in Midtown?";
   await sendMessage();
   setTimeout(() => { document.getElementById("user-input").value = "Make it 11:00 instead"; sendMessage(); }, 2000);
+  setTimeout(() => { document.getElementById("user-input").value = "What's our cancellation policy and cancel my appointment?"; sendMessage(); }, 4000);
 }
 function runTest2() { document.getElementById("user-input").value = "Where do patients park?"; sendMessage(); }
 function runTest3() { document.getElementById("user-input").value = "Schedule Rivera Monday 9am at Midtown"; sendMessage(); }

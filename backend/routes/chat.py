@@ -1,6 +1,6 @@
 import time, re
 from fastapi import APIRouter
-from backend.services.appointments import schedule_appointment, reschedule_appointment
+from backend.services.appointments import schedule_appointment, reschedule_appointment, cancel_appointment
 from backend.models.chat_input import ChatInput
 from backend.services.utils import detect_intent_regex, compose_answer, get_cached_docs
 
@@ -33,6 +33,7 @@ def chat(payload: ChatInput):
     has_patient = bool(entities.get("patient"))
     has_slot = bool(entities.get("preferred_slot_iso"))
     has_location = bool(entities.get("location"))
+    has_appt_id = bool(entities.get("appt_id"))
 
     # Helper: detect compound or info-seeking messages
     def is_compound_message(msg: str) -> bool:
@@ -41,7 +42,7 @@ def chat(payload: ChatInput):
         if '?' in q:
             return True
         for w in question_words:
-            if w in q and re.search(r"\b(schedule|book|appointment|reserve|make it|change|reschedule)\b", q):
+            if w in q and re.search(r"\b(schedule|book|appointment|reserve|make it|change|reschedule|cancel|delete|remove)\b", q):
                 return True
         return False
 
@@ -82,7 +83,7 @@ def chat(payload: ChatInput):
                 "latency_ms": round((time.time() - retrieve_start) * 1000, 2)
             })
 
-            # ✅ Compose using LLM for RAG questions
+            # ✅ Compose using Template for RAG questions
             compose_start = time.time()
             reply = compose_answer(message, docs, use_llm=True)
             plan_steps.append({
@@ -113,6 +114,30 @@ def chat(payload: ChatInput):
             plan_steps.append({
                 "step": len(plan_steps) + 1,
                 "intent": "schedule_after_compose",
+                "latency_ms": round((time.time() - tool_start) * 1000, 2)
+            })
+
+        # --- Step 6: Cancellation branch ---
+        if intent.get("is_cancelling"):
+            tool_start = time.time()
+
+            appt_id = intent["entities"].get("appt_id")
+            tool_result = cancel_appointment(session_id=session_id, appt_id=appt_id)
+
+            tool_calls.append({
+                "name": "cancel_appointment",
+                "args": {"appt_id": appt_id},
+                "result": tool_result
+            })
+
+            if tool_result["ok"]:
+                reply += f"Your appointment ({tool_result['appt_id']}) has been cancelled."
+            else:
+                reply += f"Could not cancel: {tool_result.get('error', 'No appointment found.')}"
+
+            plan_steps.append({
+                "step": len(plan_steps) + 1,
+                "intent": "cancel",
                 "latency_ms": round((time.time() - tool_start) * 1000, 2)
             })
 
