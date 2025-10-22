@@ -1,0 +1,67 @@
+[
+  {
+    "id": "k1",
+    "text": "Our clinic hours are Monday-Friday 8am-6pm, Saturday 9am-2pm. We are closed on Sundays and major holidays.",
+    "tags": ["hours", "schedule"]
+  },
+  {
+    "id": "k2",
+    "text": "Late arrival policy: We have a 10-minute grace period. If you arrive more than 10 minutes late, your appointment may need to be rescheduled.",
+    "tags": ["policy", "punctuality"]
+  },
+  {
+    "id": "k3",
+    "text": "Cancellation policy: We require 24-hour advance notice for cancellations. Late cancellations may incur a $50 fee.",
+    "tags": ["policy", "cancellation"]
+  },
+  {
+    "id": "k4",
+    "text": "Patient parking is available in Lot B located behind the main building. The first 2 hours are free. Additional hours are $3 per hour.",
+    "tags": ["parking", "facilities"]
+  },
+  {
+    "id": "k5",
+    "text": "We accept most major insurance plans including Blue Cross Blue Shield, Aetna, United Healthcare, Cigna, and Medicare.",
+    "tags": ["insurance", "billing"]
+  },
+  {
+    "id": "k6",
+    "text": "New patients should arrive 15 minutes early to complete registration paperwork. Please bring your ID and insurance card.",
+    "tags": ["registration", "new-patient"]
+  },
+  {
+    "id": "k7",
+    "text": "Our office locations: Midtown (555 Main St), Downtown (123 Park Ave), and Uptown (789 Oak Blvd). All locations are wheelchair accessible.",
+    "tags": ["locations", "accessibility"]
+  },
+  {
+    "id": "k8",
+    "text": "Prescription refills can be requested through our patient portal or by calling 48 hours in advance. We do not provide refills during weekends.",
+    "tags": ["prescriptions", "pharmacy"]
+  },
+  {
+    "id": "k9",
+    "text": "We accept all forms of payment such as credit card, debit card, cash and cheques. We also provide installment payment based on amount",
+    "tags": ["payment", "installment", "billing"]
+  },
+  {
+    "id": "k10",
+    "text": "Appointments can be scheduled for Midtown, Downtown, or Uptown locations. Please specify your preferred time and location.",
+    "tags": ["appointments", "locations"]
+  },
+  {
+    "id": "k11",
+    "text": "For pediatric patients, a parent or guardian must be present during the appointment.",
+    "tags": ["pediatric", "policy"]
+  },
+  {
+    "id": "k12",
+    "text": "Patients with allergies should inform the staff during check-in. Emergency allergy medication is available on-site.",
+    "tags": ["allergy", "safety"]
+  },
+  {
+    "id": "k13",
+    "text": "Telehealth appointments are available for follow-up visits and consultations. Please request telehealth when booking.",
+    "tags": ["telehealth", "appointments"]
+  }
+]

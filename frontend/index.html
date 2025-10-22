@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FastLane RAG Orchestrator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚦 FastLane RAG Orchestrator</h1>
+      <div class="subtitle">
+        Healthcare appointment scheduling with sub-500ms responses
+      </div>
+      <div class="stats">
+        <div class="stat-item">
+          <span>Avg Latency:</span>
+          <span class="stat-value" id="avg-latency">-</span>
+        </div>
+        <div class="stat-item">
+          <span>Queries:</span>
+          <span class="stat-value" id="query-count">0</span>
+        </div>
+        <div class="stat-item">
+          <span>P95:</span>
+          <span class="stat-value" id="p95-latency">-</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="message assistant">
+        <div class="message-content">
+          <div class="message-text">
+            👋 Hello! I can help you with clinic policies and schedule
+            appointments. Try asking about parking, hours, or book an
+            appointment!
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrapper">
+        <input
+          type="text"
+          id="user-input"
+          placeholder="Ask about policies or schedule an appointment..."
+          autocomplete="off"
+        />
+        <button id="send-btn">Send</button>
+      </div>
+      <div class="quick-tests">
+        <button class="quick-test-btn" onclick="runTest1()">Test 1: Multi-turn</button>
+        <button class="quick-test-btn" onclick="runTest2()">Test 2: Pure RAG</button>
+        <button class="quick-test-btn" onclick="runTest3()">Test 3: Direct Tool</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
