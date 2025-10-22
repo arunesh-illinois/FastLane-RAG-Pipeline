@@ -243,13 +243,55 @@ Response:
 - P95 latency: <100ms
 - Cold start: ~3s
 
-## Future Enhancements 🔮
+## Appointment Chatbot — Design & Trade-offs
+
+#### **Trade-off 1: Template responses vs LLM generation**
+
+* Chose **speed over naturalness**: template responses are 50× faster than calling an LLM.
+* In production: use a **fast LLM** like GPT-4o-mini with aggressive caching.
+
+  * Cache hit for common queries.
+  * LLM invoked only for novel or complex questions.
+
+#### **Trade-off 2: Regex intent detection vs LLM classification**
+
+* Regex is **deterministic and very fast**, but brittle.
+
+  * Misses conversational patterns like *“I need to see someone tomorrow”*.
+* Production alternative: fine-tuned classifier or GPT-4 function calling for **95%+ accuracy**.
+
+#### **Trade-off 3: In-memory storage vs persistence**
+
+* Current implementation keeps everything **in RAM** for speed.
+* Downside: **data lost on restart**.
+* Production solution:
+
+  * PostgreSQL for appointments
+  * Redis for caching
+  * Persistent vector store like **Qdrant** or **Pinecone**
+
+---
+
+## **Future Enhancements 🔮**
+
+### **Immediate priorities**
+
+1. Semantic caching — return same results for similar queries
+2. Better session management — track full conversation history
+3. Streaming responses — render answers before completion
+4. Conflict detection — verify calendar availability before booking
+5. Multi-language support — leverage multilingual embeddings
+
+### **Longer-term improvements**
 
 1. Persistent vector store for faster restarts
-2. Docker containerization
-3. Extended test coverage
-4. Additional appointment features
-5. More action tools while maintaining speed
+2. Docker containerization for reproducibility and deployment
+3. Extended test coverage — unit, integration, and E2E tests
+4. Additional appointment features — recurring events, notifications
+5. More action tools — expand capabilities while maintaining speed
+
+---
+
 
 ## License 📝
 

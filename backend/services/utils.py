@@ -208,6 +208,9 @@ def compose_answer(query: str, retrieved_docs: list[dict], use_llm: bool = False
 
 def rebuild_index():
 
+    # Set a global random seed
+    np.random.seed(1211)
+    
     if not global_state.documents:
         print("⚠️ No documents to index")
         return

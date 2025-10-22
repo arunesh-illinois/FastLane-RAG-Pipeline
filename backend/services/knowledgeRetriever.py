@@ -101,6 +101,9 @@ class HybridRetriever:
         Apply Maximal Marginal Relevance (MMR) to diversify results
         fused_results: list of (doc_id, score) from RRF
         """
+        # Set a global random seed
+        np.random.seed(1211)
+
         if not fused_results:
             return []
 
@@ -169,7 +172,7 @@ class HybridRetriever:
 
         # Semantic search
         start = time.time()
-        semantic_results = self.semantic_search(query, top_k=8)
+        semantic_results = self.semantic_search(normalized_query, top_k=8)
         timings['semantic'] = (time.time() - start) * 1000
 
         # Fusion
@@ -179,7 +182,7 @@ class HybridRetriever:
 
         # Apply MMR for diversity
         start = time.time()
-        mmr_results = self.apply_mmr(fused_results, query, top_k=top_k, lambda_param=0.7)
+        mmr_results = self.apply_mmr(fused_results, normalized_query, top_k=top_k, lambda_param=0.7)
         timings['mmr'] = (time.time() - start) * 1000
 
         # Get top-K documents
