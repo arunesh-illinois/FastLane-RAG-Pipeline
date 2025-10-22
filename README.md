@@ -277,10 +277,11 @@ Response:
 ### **Immediate priorities**
 
 1. Semantic caching — return same results for similar queries
-2. Better session management — track full conversation history
-3. Streaming responses — render answers before completion
-4. Conflict detection — verify calendar availability before booking
-5. Multi-language support — leverage multilingual embeddings
+2. Addition of Availability Calendar - have a higher idempotency and avoid double booking for 2 different clients
+3. Better session management — track full conversation history
+4. Streaming responses — render answers before completion
+5. Conflict detection — verify calendar availability before booking
+6. Multi-language support — leverage multilingual embeddings
 
 ### **Longer-term improvements**
 
