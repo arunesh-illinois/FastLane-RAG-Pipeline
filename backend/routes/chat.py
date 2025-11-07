@@ -1,13 +1,13 @@
 import time, re
 from fastapi import APIRouter
-from backend.services.appointments import schedule_appointment, reschedule_appointment, cancel_appointment
+from backend.services.appointments import schedule_appointment, update_appointment, cancel_appointment
 from backend.models.chat_input import ChatInput
 from backend.services.utils import detect_intent_regex, compose_answer, get_cached_docs
 
 router = APIRouter()
 
 @router.post("/chat")
-def chat(payload: ChatInput):
+async def chat(payload: ChatInput):
     start_time = time.time()
 
     session_id = payload.session_id
@@ -49,7 +49,7 @@ def chat(payload: ChatInput):
     # --- Step 2: Direct scheduling shortcut ---
     if intent.get("is_scheduling") and has_patient and has_slot and has_location and not is_compound_message(message):
         tool_start = time.time()
-        tool_result = schedule_appointment(entities, session_id)
+        tool_result = await schedule_appointment(entities, session_id)
         scheduled = True
 
         tool_calls.append({
@@ -95,7 +95,7 @@ def chat(payload: ChatInput):
         # --- Step 4: Schedule if needed (after compose) ---
         if intent.get("is_scheduling") and has_patient and has_slot and has_location and not scheduled:
             tool_start = time.time()
-            tool_result = schedule_appointment(entities, session_id)
+            tool_result = await schedule_appointment(entities, session_id)
             scheduled = True
 
             tool_calls.append({
@@ -122,7 +122,10 @@ def chat(payload: ChatInput):
             tool_start = time.time()
 
             appt_id = intent["entities"].get("appt_id")
-            tool_result = cancel_appointment(session_id=session_id, appt_id=appt_id)
+            if appt_id:
+                tool_result = await cancel_appointment(appt_id=appt_id)
+            else:
+                tool_result = {"ok": False, "error": "No appointment ID provided"}
 
             tool_calls.append({
                 "name": "cancel_appointment",
@@ -133,7 +136,7 @@ def chat(payload: ChatInput):
             if tool_result["ok"]:
                 reply += f"Your appointment ({tool_result['appt_id']}) has been cancelled."
             else:
-                reply += f"Could not cancel: {tool_result.get('error', 'No appointment found.')}"
+                reply += f"Could not cancel: {tool_result.get('message', 'No appointment found.')}"
 
             plan_steps.append({
                 "step": len(plan_steps) + 1,
@@ -144,26 +147,32 @@ def chat(payload: ChatInput):
     # --- Step 5: Rescheduling branch ---
     if intent.get("is_rescheduling"):
         new_slot = entities.get("preferred_slot_iso")
-        tool_start = time.time()
-        tool_result = reschedule_appointment(session_id, new_slot)
-
-        tool_calls.append({
-            "name": "reschedule_appointment",
-            "args": {"new_slot": new_slot},
-            "result": tool_result
-        })
-
-        if tool_result["ok"]:
-            time_display = new_slot.split('T')[1][:5]
-            reply = f"Updated appointment to {time_display} ({tool_result['appt_id']})."
+        appt_id = intent["entities"].get("appt_id")
+        
+        if not appt_id:
+            reply = "Cannot reschedule: appointment ID is required."
         else:
-            reply = f"Could not reschedule: {tool_result.get('error', 'Unknown error')}"
+            tool_start = time.time()
+            # Update appointment with new slot
+            tool_result = await update_appointment(appt_id, {"preferred_slot_iso": new_slot})
 
-        plan_steps.append({
-            "step": len(plan_steps) + 1,
-            "intent": "reschedule",
-            "latency_ms": round((time.time() - tool_start) * 1000, 2)
-        })
+            tool_calls.append({
+                "name": "reschedule_appointment",
+                "args": {"new_slot": new_slot},
+                "result": tool_result
+            })
+
+            if tool_result["ok"]:
+                time_display = new_slot.split('T')[1][:5]
+                reply = f"Updated appointment to {time_display} ({appt_id})."
+            else:
+                reply = f"Could not reschedule: {tool_result.get('error', 'Unknown error')}"
+
+            plan_steps.append({
+                "step": len(plan_steps) + 1,
+                "intent": "reschedule",
+                "latency_ms": round((time.time() - tool_start) * 1000, 2)
+            })
 
     total_latency = round((time.time() - start_time) * 1000, 2)
     return {

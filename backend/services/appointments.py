@@ -1,14 +1,22 @@
 from datetime import datetime
 from typing import Dict, Optional, Tuple
+from backend.services.database import db_service
 
-# In-memory appointment storage
-appointments: Dict[str, dict] = {}
-booked_slots = set()  # (patient_lower, slot, location_lower)
-session_context: Dict[str, str] = {}  # session_id → last_appt_id
+
+# Keep appt_counter for generating IDs
 appt_counter = 1000
+session_context: Dict[str, str] = {}  # session_id → last_appt_id
 
 
-def schedule_appointment(params: dict, session_id: Optional[str] = None) -> dict:
+def get_next_appt_id() -> str:
+    """Generate next appointment ID"""
+    global appt_counter
+    appt_id = f"A-{appt_counter}"
+    appt_counter += 1
+    return appt_id
+
+
+async def schedule_appointment(params: dict, session_id: Optional[str] = None) -> dict:
     """
     Schedule a new appointment (idempotent)
 
@@ -16,7 +24,8 @@ def schedule_appointment(params: dict, session_id: Optional[str] = None) -> dict
         params: {
             "patient": str,
             "preferred_slot_iso": str,
-            "location": str
+            "location": str,
+            "notes": Optional[str]
         }
         session_id: Optional session ID for tracking
 
@@ -28,174 +37,153 @@ def schedule_appointment(params: dict, session_id: Optional[str] = None) -> dict
             "status": "created" | "already_booked"
         }
     """
-    global appt_counter
-
     patient = params.get("patient", "Unknown").strip()
     slot = params.get("preferred_slot_iso", "")
     location = params.get("location", "Main").strip()
-
-    # Normalize for deduplication
-    patient_key = patient.lower()
-    location_key = location.lower()
-    slot_key = (patient_key, slot, location_key)
-
-    # Check if already booked (idempotency)
-    if slot_key in booked_slots:
-        # Find existing appointment
-        for appt_id, appt in appointments.items():
-            if (appt["patient"].lower() == patient_key and
-                    appt["slot"] == slot and
-                    appt["location"].lower() == location_key):
-
-                # Update session context
-                if session_id:
-                    session_context[session_id] = appt_id
-
-                return {
-                    "ok": True,
-                    "appt_id": appt_id,
-                    "normalized_slot_iso": slot,
-                    "status": "already_booked"
-                }
-
-    # Create new appointment
-    appt_id = f"A-{appt_counter}"
-    appt_counter += 1
-
-    appointments[appt_id] = {
-        "patient": patient,
-        "slot": slot,
-        "location": location,
-        "created_at": datetime.now().isoformat()
-    }
-
-    booked_slots.add(slot_key)
-
+    notes = params.get("notes")
+    
+    appt_id = get_next_appt_id()
+    
+    result = await db_service.create_appointment(
+        appointment_id=appt_id,
+        patient=patient,
+        slot=slot,
+        location=location,
+        notes=notes
+    )
+    
     # Track in session
-    if session_id:
-        session_context[session_id] = appt_id
+    if session_id and "appt_id" in result:
+        session_context[session_id] = result["appt_id"]
+    
+    return result
 
+
+async def get_appointment(appt_id: str) -> Optional[Dict]:
+    """Get a single appointment by ID"""
+    return await db_service.get_appointment(appt_id)
+
+
+async def get_all_appointments() -> dict:
+    """Get all appointments"""
+    appointments_list = await db_service.get_all_appointments()
+    total = await db_service.get_appointments_count()
+    
     return {
-        "ok": True,
-        "appt_id": appt_id,
-        "normalized_slot_iso": slot,
-        "status": "created"
+        "appointments": appointments_list,
+        "total": total
     }
 
 
-def reschedule_appointment(session_id: str, new_slot: str) -> dict:
+async def update_appointment(appt_id: str, updates: dict) -> dict:
     """
-    Reschedule the last appointment in the session by creating a new appointment ID
-    """
-
-    global appt_counter
-
-    # Get last appointment from session
-    appt_id = session_context.get(session_id)
-
-    if not appt_id or appt_id not in appointments:
-        return {
-            "ok": False,
-            "error": "No recent appointment found in session",
-            "status": "error"
-        }
-
-    old_appt = appointments[appt_id]
-
-    # Remove old slot from booked set
-    old_key = (
-        old_appt["patient"].lower(),
-        old_appt["slot"],
-        old_appt["location"].lower()
-    )
-    booked_slots.discard(old_key)
-
-    # Create new appointment (with new ID)
-    new_appt_id = f"A-{appt_counter}"
-    appt_counter += 1
-
-    new_appt = {
-        "patient": old_appt["patient"],
-        "slot": new_slot,
-        "location": old_appt["location"],
-        "created_at": datetime.now().isoformat(),
-        "previous_appt_id": appt_id
-    }
-
-    appointments[new_appt_id] = new_appt
-
-    # Add new slot to booked set
-    new_key = (
-        old_appt["patient"].lower(),
-        new_slot,
-        old_appt["location"].lower()
-    )
-    booked_slots.add(new_key)
-
-    # Update session to track the latest appointment
-    session_context[session_id] = new_appt_id
-
-    return {
-        "ok": True,
-        "appt_id": new_appt_id,
-        "normalized_slot_iso": new_slot,
-        "status": "rescheduled"
-    }
-
-
-
-def get_appointments() -> dict:
-    """Get all appointments (for testing)"""
-    return {
-        "appointments": list(appointments.values()),
-        "total": len(appointments)
-    }
-
-def cancel_appointment(session_id: Optional[str] = None, appt_id: Optional[str] = None) -> dict:
-    """
-    Cancel an appointment by session_id or appt_id.
-
-    Priority:
-    - If appt_id is provided, cancel that one directly.
-    - Otherwise, use the last appointment in the session.
-
+    Update an appointment
+    
+    Args:
+        appt_id: Appointment ID
+        updates: Dictionary of fields to update (patient, preferred_slot_iso, location, notes, status)
+    
     Returns:
         {
             "ok": bool,
-            "appt_id": str (if found),
-            "status": "cancelled" | "not_found"
+            "appointment": dict | None
         }
     """
-    # Determine appointment ID
-    target_appt_id = appt_id or session_context.get(session_id)
+    # Map API field names to database field names
+    db_updates = {}
+    if "preferred_slot_iso" in updates:
+        db_updates["slot"] = updates["preferred_slot_iso"]
+    if "patient" in updates:
+        db_updates["patient"] = updates["patient"]
+    if "location" in updates:
+        db_updates["location"] = updates["location"]
+    if "notes" in updates:
+        db_updates["notes"] = updates["notes"]
+    if "status" in updates:
+        db_updates["status"] = updates["status"]
+    
+    appointment = await db_service.update_appointment(appt_id, **db_updates)
+    
+    return {
+        "ok": appointment is not None,
+        "appointment": appointment
+    }
 
-    if not target_appt_id or target_appt_id not in appointments:
+
+async def delete_appointment(appt_id: str) -> dict:
+    """
+    Delete an appointment permanently
+    
+    Returns:
+        {
+            "ok": bool,
+            "appt_id": str,
+            "message": str
+        }
+    """
+    success = await db_service.delete_appointment(appt_id)
+    
+    if success:
+        # Remove from session context if present
+        for sid, aid in list(session_context.items()):
+            if aid == appt_id:
+                session_context.pop(sid, None)
+                break
+        
+        return {
+            "ok": True,
+            "appt_id": appt_id,
+            "message": "Appointment deleted successfully"
+        }
+    else:
         return {
             "ok": False,
-            "error": "No matching appointment found to cancel",
-            "status": "not_found"
+            "appt_id": appt_id,
+            "message": "Appointment not found"
         }
 
-    appt = appointments[target_appt_id]
 
-    # Remove from booked slots
-    slot_key = (
-        appt["patient"].lower(),
-        appt["slot"],
-        appt["location"].lower()
-    )
-    booked_slots.discard(slot_key)
+async def cancel_appointment(appt_id: str) -> dict:
+    """
+    Cancel an appointment (soft delete)
+    
+    Returns:
+        {
+            "ok": bool,
+            "appt_id": str,
+            "appointment": dict,
+            "message": str
+        }
+    """
+    appointment = await db_service.cancel_appointment(appt_id)
+    
+    if appointment:
+        # Remove from session context if present
+        for sid, aid in list(session_context.items()):
+            if aid == appt_id:
+                session_context.pop(sid, None)
+                break
+        
+        return {
+            "ok": True,
+            "appt_id": appt_id,
+            "appointment": appointment,
+            "message": "Appointment cancelled successfully"
+        }
+    else:
+        return {
+            "ok": False,
+            "appt_id": appt_id,
+            "message": "Appointment not found"
+        }
 
-    # Mark appointment as cancelled
-    appt["cancelled_at"] = datetime.now().isoformat()
-    appt["status"] = "cancelled"
 
-    # Remove from session context if it matches
-    if session_id and session_context.get(session_id) == target_appt_id:
-        session_context.pop(session_id, None)
-
+async def clear_all_appointments() -> dict:
+    """Clear all appointments (for testing)"""
+    count = await db_service.clear_all_appointments()
+    session_context.clear()
+    
     return {
         "ok": True,
-        "appt_id": target_appt_id,
-        "status": "cancelled"
+        "message": f"All appointments cleared ({count} deleted)"
     }
